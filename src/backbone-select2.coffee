@@ -13,38 +13,40 @@ class BaseOptionView extends Backbone.View
     @el.innerText = _.result(@, 'propertyDisplay')
     @
 
-class TestOptionView extends BaseOptionView
-  propertyValue: =>
-    @model.cid
-  propertyDisplay: =>
-    @model.get('name') + ': ' + @model.get('age')
+class MultiSelectControlView extends Backbone.View
+  formatter: =>
+    if typeof @options.displayProperty is 'string'
+      displayProperty = @options.displayProperty
+      (item) ->
+        _.result item, displayProperty
+    else
+      throw new Error 'MultiSelectControlView : error : you must define the displayProperty in your model to show in the dropdown'
 
-class SelectControlView extends Backbone.View
-  format: (state) =>
-    "#{state.name}"
   initialize: (options) =>
     @options = options
     if not @options?.selectedCollection?.model
-      throw new Error 'SelectControlView : error : you must provide a collection to store the selected objects'
+      throw new Error 'MultiSelectControlView : error : you must provide a collection to store the selected objects'
     @$select = @$el.select2
       multiple: true
-      id: (item) ->
-        item.id
+      id: do =>
+        id = @options.id
+        (item) ->
+          _.result item, id or 'id'
       data:
         results: @collection.toJSON()
-        text: 'name'
-      formatResult: @format
-      formatSelection: @format
+        text: @options.displayProperty
+      formatResult: @formatter()
+      formatSelection: @formatter()
       createSearchChoice: (term) =>
-        itemsWithTerm = @collection.where {name: term}
+        search = {}
+        search[@options.displayProperty] = term
+        itemsWithTerm = @collection.where search
         if itemsWithTerm?.length > 0
           return
-        return {
-          id: _.uniqueId 'n'
-          name: term
-          age: 18
-        }
-      placeholder: 'Choose'
+        searchChoice = _.extend {}, @options.defaultItem, id: _.uniqueId 'n'
+        searchChoice[@options.displayProperty] = term
+        return searchChoice
+      placeholder: @options.placeholder
     @$select.select2 'data', @options.selectedCollection.toJSON()
     @$select.change @onChange
     return
@@ -54,18 +56,17 @@ class SelectControlView extends Backbone.View
     if event.added
       itemMatching = @options.selectedCollection.findWhere {id: event.added.id}
       if itemMatching
-        throw new Error 'SelectControlView : error : attempt to add item to selectedCollection that already exists'
+        throw new Error 'MultiSelectControlView : error : attempt to add item to selectedCollection that already exists'
       # TODO(will): call save on the new model?
       model = new @options.selectedCollection.model event.added
       @options.selectedCollection.add model
     if event.removed
       itemToRemove = @options.selectedCollection.findWhere {id: event.removed.id}
       if not itemToRemove
-        throw new Error 'SelectControlView : error : change event occurred but selectedCollection is not in sync'
+        throw new Error 'MultiSelectControlView : error : change event occurred but selectedCollection is not in sync'
       @options.selectedCollection.remove itemToRemove
-    return true
 
-$ ->
+testBackboneSelect2 = ->
   Handlebars.registerHelper 'dump', (obj) ->
     JSON.stringify(obj).toString()
 
@@ -80,11 +81,14 @@ $ ->
     {id: 2, name: 'Alice', age: 28}
   ]
 
-  selectView = new SelectControlView
+  selectView = new MultiSelectControlView
     el: $('#sample-select')[0]
     collection: datapoints
-    item_view_class: TestOptionView
+    displayProperty: 'name'
     selectedCollection: selectedDatapoints
+    defaultItem:
+      age: 18
+    placeholder: 'Enter some names...'
 
   class TestListView extends Guts.BasicModelView
     tagName: 'li'
@@ -94,3 +98,5 @@ $ ->
     el: $('#selection-section')[0]
     item_view_class: TestListView
     collection: selectedDatapoints
+
+# testBackboneSelect2()
