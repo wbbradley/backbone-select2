@@ -80,10 +80,11 @@
       return "" + state.name;
     };
 
-    SelectControlView.prototype.initialize = function() {
-      var _ref3,
+    SelectControlView.prototype.initialize = function(options) {
+      var _ref3, _ref4,
         _this = this;
-      if (!((_ref3 = this.options.selectedCollection) != null ? _ref3.model : void 0)) {
+      this.options = options;
+      if (!((_ref3 = this.options) != null ? (_ref4 = _ref3.selectedCollection) != null ? _ref4.model : void 0 : void 0)) {
         throw new Error('SelectControlView : error : you must provide a collection to store the selected objects');
       }
       this.$select = this.$el.select2({
@@ -129,7 +130,6 @@
         }
         model = new this.options.selectedCollection.model(event.added);
         this.options.selectedCollection.add(model);
-        model.save();
       }
       if (event.removed) {
         itemToRemove = this.options.selectedCollection.findWhere({
