@@ -1,0 +1,13 @@
+#!/bin/sh
+BASENAME=`npm ll | grep ==== | sed 's/..\([^ ]*\).*/\1/'`
+FILE=src/$BASENAME.coffee
+VERSIONED_BASENAME=`npm ll | grep ^$BASENAME | sed 's/@/-/'`
+echo Compiling $FILE
+./node_modules/.bin/coffee -o dist -c src/*.coffee
+echo Saving build to dist/$VERSIONED_BASENAME.js
+echo "// $VERSIONED_BASENAME" > dist/$VERSIONED_BASENAME.js
+echo "// http://github.com/wbbradley/backbone-select2" >> dist/$VERSIONED_BASENAME.js
+cat dist/$BASENAME.js >> dist/$VERSIONED_BASENAME.js
+rm dist/$BASENAME.js
+echo Done.
+

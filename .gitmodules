@@ -1,0 +1,21 @@
+[submodule "select2"]
+	path = select2
+	url = https://github.com/ivaynberg/select2
+[submodule "backbone"]
+	path = backbone
+	url = https://github.com/documentcloud/backbone
+[submodule "underscore"]
+	path = underscore
+	url = https://github.com/documentcloud/underscore
+[submodule "jquery"]
+	path = jquery
+	url = https://github.com/jquery/jquery
+[submodule "handlebars"]
+	path = handlebars
+	url = https://github.com/wycats/handlebars.js
+[submodule "guts"]
+	path = guts
+	url = https://github.com/wbbradley/guts
+[submodule "bootstrap"]
+	path = bootstrap
+	url = https://github.com/twitter/bootstrap
