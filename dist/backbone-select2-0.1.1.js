@@ -12,6 +12,7 @@
 
     function MultiselectView() {
       this.onChange = __bind(this.onChange, this);
+      this.updateSelectOptionsData = __bind(this.updateSelectOptionsData, this);
       this.initialize = __bind(this.initialize, this);
       this.formatter = __bind(this.formatter, this);
       _ref = MultiselectView.__super__.constructor.apply(this, arguments);
@@ -40,15 +41,20 @@
       if (!((_ref2 = this.options) != null ? (_ref3 = _ref2.selectedCollection) != null ? _ref3.model : void 0 : void 0)) {
         throw new Error('MultiselectView : error : you must provide a collection to store the selected objects');
       }
-      this.$el.html("<div class='select2-placeholder'></div>");
+      this.$el.html("<div style='width:100%' class='select2-placeholder'></div>");
       this.$select = this.$('.select2-placeholder').select2({
         multiple: true,
-        width: this.options.width || 'off',
         id: (function() {
-          var id;
-          id = _this.options.id;
+          var id_name;
+          id_name = _this.options.id;
           return function(item) {
-            return _.result(item, id || 'id');
+            var id;
+            id = _.result(item, id_name || 'id');
+            if (id) {
+              return id;
+            } else {
+              return _.result(item, '_id');
+            }
           };
         })(),
         data: {
@@ -66,7 +72,7 @@
             return;
           }
           searchChoice = _.extend({}, _this.options.defaultItem, {
-            id: _.uniqueId('n')
+            _id: _.uniqueId('n')
           });
           searchChoice[_this.options.displayProperty] = term;
           return searchChoice;
@@ -74,13 +80,22 @@
         placeholder: this.options.placeholder
       });
       this.$select.select2('data', this.options.selectedCollection.toJSON());
-      this.listenTo(this.options.selectedCollection, 'add', function() {
-        return _this.$select.select2('data', _this.options.selectedCollection.toJSON());
-      });
-      this.listenTo(this.options.selectedCollection, 'remove', function() {
-        return _this.$select.select2('data', _this.options.selectedCollection.toJSON());
-      });
+      this.listenTo(this.options.selectedCollection, 'add', this.updateSelectOptionsData);
+      this.listenTo(this.options.selectedCollection, 'remove', this.updateSelectOptionsData);
+      this.listenTo(this.options.selectedCollection, 'sync', this.updateSelectOptionsData);
       this.$select.change(this.onChange);
+    };
+
+    MultiselectView.prototype.updateSelectOptionsData = function(eventName) {
+      var item, selectedItems, _i, _len;
+      selectedItems = this.options.selectedCollection.toJSON();
+      for (_i = 0, _len = selectedItems.length; _i < _len; _i++) {
+        item = selectedItems[_i];
+        if (!('id' in item)) {
+          item._id = item._id || _.uniqueId('n');
+        }
+      }
+      this.$select.select2('data', selectedItems);
     };
 
     MultiselectView.prototype.onChange = function(event) {
@@ -92,8 +107,9 @@
         if (itemMatching) {
           throw new Error('MultiselectView : error : attempt to add item to selectedCollection that already exists');
         }
-        model = new this.options.selectedCollection.model(event.added);
+        model = new this.options.selectedCollection.model(_.omit(event.added, '_id'));
         this.options.selectedCollection.add(model);
+        this.options.selectedCollection.trigger('select2:add', model);
       }
       if (event.removed) {
         itemToRemove = this.options.selectedCollection.findWhere({
@@ -102,7 +118,8 @@
         if (!itemToRemove) {
           throw new Error('MultiselectView : error : change event occurred but selectedCollection is not in sync');
         }
-        return this.options.selectedCollection.remove(itemToRemove);
+        this.options.selectedCollection.remove(itemToRemove);
+        return this.options.selectedCollection.trigger('select2:remove', itemToRemove);
       }
     };
 

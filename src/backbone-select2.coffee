@@ -15,16 +15,16 @@ class MultiselectView extends Backbone.View
       throw new Error 'MultiselectView : error : you must provide a collection to store the selected objects'
 
     # select2 needs some room to create siblings, create a child placeholder
-    @$el.html "<div class='select2-placeholder'></div>"
+    @$el.html "<div style='width:100%' class='select2-placeholder'></div>"
 
     @$select = @$('.select2-placeholder').select2
       multiple: true
       # default prevention of the automatic setting of width for now
-      width: @options.width or 'off'
       id: do =>
-        id = @options.id
+        id_name = @options.id
         (item) ->
-          _.result item, id or 'id'
+          id = _.result item, id_name or 'id'
+          if id then id else _.result item, '_id'
       data:
         results: @collection.toJSON()
         text: @options.displayProperty
@@ -36,20 +36,26 @@ class MultiselectView extends Backbone.View
         itemsWithTerm = @collection.where search
         if itemsWithTerm?.length > 0
           return
-        searchChoice = _.extend {}, @options.defaultItem, id: _.uniqueId 'n'
+        searchChoice = _.extend {}, @options.defaultItem, _id: _.uniqueId 'n'
         searchChoice[@options.displayProperty] = term
         return searchChoice
       placeholder: @options.placeholder
     @$select.select2 'data', @options.selectedCollection.toJSON()
 
     # watch the selected collection
-    @listenTo @options.selectedCollection, 'add', =>
-      @$select.select2 'data', @options.selectedCollection.toJSON()
-
-    @listenTo @options.selectedCollection, 'remove', =>
-      @$select.select2 'data', @options.selectedCollection.toJSON()
-
+    @listenTo @options.selectedCollection, 'add', @updateSelectOptionsData
+    @listenTo @options.selectedCollection, 'remove', @updateSelectOptionsData
+    @listenTo @options.selectedCollection, 'sync', @updateSelectOptionsData
     @$select.change @onChange
+    return
+
+  updateSelectOptionsData: (eventName) =>
+    selectedItems = @options.selectedCollection.toJSON()
+    for item in selectedItems
+      if 'id' not of item
+        item._id = item._id or _.uniqueId 'n'
+
+    @$select.select2 'data', selectedItems
     return
 
   onChange: (event) =>
@@ -57,14 +63,15 @@ class MultiselectView extends Backbone.View
       itemMatching = @options.selectedCollection.findWhere {id: event.added.id}
       if itemMatching
         throw new Error 'MultiselectView : error : attempt to add item to selectedCollection that already exists'
-      # TODO(will): call save on the new model?
-      model = new @options.selectedCollection.model event.added
+      model = new @options.selectedCollection.model _.omit event.added, '_id'
       @options.selectedCollection.add model
+      @options.selectedCollection.trigger 'select2:add', model
     if event.removed
       itemToRemove = @options.selectedCollection.findWhere {id: event.removed.id}
       if not itemToRemove
         throw new Error 'MultiselectView : error : change event occurred but selectedCollection is not in sync'
       @options.selectedCollection.remove itemToRemove
+      @options.selectedCollection.trigger 'select2:remove', itemToRemove
 
 if not Backbone
   throw new Error 'backbone-select2 : error : Backbone should be loaded before me'
